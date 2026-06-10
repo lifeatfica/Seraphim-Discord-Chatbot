@@ -180,9 +180,14 @@ const path = require('path');
 const { authenticateGoogle, uploadFileToDrive } = require('./googleAuth.js');
 require("dotenv").config();
 const express = require('express'); // Add Express for Railway
+const { GoogleGenAI } = require('@google/genai');
 
-const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY
+// const openai = new OpenAI({
+//     apiKey: process.env.OPENAI_API_KEY
+// });
+
+const gemini = new GoogleGenAI({
+    apiKey: process.env.GEMINI_API_KEY
 });
 
 // Discord Client
