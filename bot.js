@@ -177,14 +177,10 @@ const { Client, GatewayIntentBits } = require('discord.js');
 // const { OpenAI } = require("openai");
 // const fs = require('fs');
 // const path = require('path');
-// const { authenticateGoogle, uploadFileToDrive } = require('./googleAuth.js');
+const { authenticateGoogle, uploadFileToDrive } = require('./googleAuth.js');
 require("dotenv").config();
 const express = require('express'); // Add Express for Railway
 const { GoogleGenAI } = require('@google/genai');
-
-// const openai = new OpenAI({
-//     apiKey: process.env.OPENAI_API_KEY
-// });
 
 const gemini = new GoogleGenAI({
     apiKey: process.env.GEMINI_API_KEY
@@ -198,6 +194,33 @@ const client = new Client({
         GatewayIntentBits.MessageContent
     ]
 });
+
+const createDocumentDeclaration = {
+    name: 'create_document',
+    description: 'Create a document from Google Docs template',
+    parameters: {
+        type: 'object',
+        properties: {
+            documentType: {
+                type: 'string',
+                enum: ['offer_letter', 'nda']
+            },
+            personName: {
+                type: 'string'
+            }
+        },
+        required: ['documentType', 'personName']
+    }
+};
+
+/**
+ * 
+ * @param {string} documentType 
+ * @param {string} personName 
+ */
+function createDocument(documentType, personName) {
+    // handle Google Drive API logic here
+}
 
 // const sleep = (ms) => {
 //     return new Promise(resolve => setTimeout(resolve, ms));
@@ -247,14 +270,29 @@ client.once('ready', async () => {
 // }
 client.on('messageCreate', async message => {
     if (message.author.bot || !message.content || message.content === '' || !message.mentions.has(client.user)) return;
-
+    
     try {
-        let response = await gemini.models.generateContent({
+        const response = await gemini.models.generateContent({
             model: "gemini-2.5-flash",
             contents: message.content,
-        })
-        response = response.text.substring(0, 1999);
-        await message.reply(response);
+            config: {
+                tools: [{
+                    functionDeclarations: [createDocumentDeclaration]
+                }]
+            }
+        });
+        
+        if (response.functionCalls && response.functionCalls.length > 0) {
+            const functionCall = response.functionCalls[0];
+            const {documentType, personName} = functionCall.args;
+            console.log(`Function to call: ${functionCall.name}`);
+            console.log(`ID: ${functionCall.id}`);
+            console.log(`Arguments: ${JSON.stringify(functionCall.args)}`);
+        } else {
+            const text = response.text.substring(0, 1999);
+            await message.reply(text);
+        }
+        
 
     } catch (err) {
         console.error(err);
