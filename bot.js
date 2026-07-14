@@ -177,7 +177,7 @@ const { Client, GatewayIntentBits } = require('discord.js');
 // const { OpenAI } = require("openai");
 // const fs = require('fs');
 // const path = require('path');
-const { authenticateGoogle, uploadFileToDrive } = require('./googleAuth.js');
+const { authenticateGoogle, copyFile } = require('./googleAuth.js');
 require("dotenv").config();
 const express = require('express'); // Add Express for Railway
 const { GoogleGenAI } = require('@google/genai');
@@ -195,8 +195,18 @@ const client = new Client({
     ]
 });
 
+const template_ids = {
+    offer_letter: '1ixG3yK7byV3ZaucJXfmU1dY8wD7A4HPo',
+    nda: '18LIsgepr2FGgzfpV8abvuZa1bBHQmKsZ'
+};
+
+const document_names = {
+    offer_letter: 'Offer Letter',
+    nda: 'NDA'
+};
+
 const createDocumentDeclaration = {
-    name: 'create_document',
+    name: 'createDocument',
     description: 'Create a document from Google Docs template',
     parameters: {
         type: 'object',
@@ -218,8 +228,13 @@ const createDocumentDeclaration = {
  * @param {string} documentType 
  * @param {string} personName 
  */
-function createDocument(documentType, personName) {
-    // handle Google Drive API logic here
+async function createDocument({documentType, personName}) {
+    const fileId = template_ids[documentType];
+    const displayName = document_names[documentType]
+    const fileName = `${displayName} - ${personName}`
+    
+    const documentLink = await copyFile(fileId, fileName);
+    return {documentLink, personName, displayName};
 }
 
 // const sleep = (ms) => {
@@ -229,7 +244,7 @@ function createDocument(documentType, personName) {
 // When discord bot has started up
 client.once('ready', async () => {
     console.log('Bot is ready!');
-    //await authenticateGoogle();
+    await authenticateGoogle();
 });
 
 // const threadMap = {};
@@ -284,10 +299,10 @@ client.on('messageCreate', async message => {
         
         if (response.functionCalls && response.functionCalls.length > 0) {
             const functionCall = response.functionCalls[0];
-            const {documentType, personName} = functionCall.args;
             console.log(`Function to call: ${functionCall.name}`);
-            console.log(`ID: ${functionCall.id}`);
             console.log(`Arguments: ${JSON.stringify(functionCall.args)}`);
+            const result = await createDocument(functionCall.args);
+            await message.reply(`Successfully created ${result.displayName} for ${result.personName}. \n Document: ${result.documentLink}`);
         } else {
             const text = response.text.substring(0, 1999);
             await message.reply(text);
