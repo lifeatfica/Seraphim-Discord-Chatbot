@@ -284,7 +284,7 @@ client.once('ready', async () => {
 //     fs.writeFileSync(localPath, buffer); // Save file locally
 // }
 client.on('messageCreate', async message => {
-    if (message.author.bot || !message.content || message.content === '' || !message.mentions.has(client.user)) return;
+    if (message.author.bot || !message.content || message.content === '') return;
     
     try {
         const response = await gemini.models.generateContent({
